@@ -188,9 +188,12 @@ export default class Slider extends PureComponent {
     thumbSize: {width: 0, height: 0},
     allMeasured: false,
     value: new Animated.Value(this.props.value),
+    thumbLeft: 0,
+    minimumTrackWidth: 0,
   };
 
   componentWillMount() {
+    this.updateAnimatedStyles();
     this._panResponder = PanResponder.create({
       onStartShouldSetPanResponder: this._handleStartShouldSetPanResponder,
       onMoveShouldSetPanResponder: this._handleMoveShouldSetPanResponder,
@@ -213,6 +216,26 @@ export default class Slider extends PureComponent {
         this._setCurrentValue(newValue);
       }
     }
+
+    const animatedProps = ['minimumValue', 'maximumValue'];
+    if (animatedProps.some(prop => this.props[prop] !== nextProps[prop])) {
+      this.updateAnimatedStyles();
+    }
+  };
+
+  updateAnimatedStyles = () => {
+    const {value, containerSize, thumbSize} = this.state;
+    const {minimumValue, maximumValue} = this.props;
+
+    const thumbLeft = value.interpolate({
+      inputRange: [minimumValue, maximumValue],
+      outputRange: [0, containerSize.width - thumbSize.width],
+      //extrapolate: 'clamp',
+    });
+
+    const minimumTrackWidth = Animated.add(thumbLeft, thumbSize.width / 2);
+
+    this.setState({thumbLeft, minimumTrackWidth});
   };
 
   render() {
@@ -230,13 +253,8 @@ export default class Slider extends PureComponent {
       debugTouchArea,
       ...other
     } = this.props;
-    var {value, containerSize, trackSize, thumbSize, allMeasured} = this.state;
+    var {value, containerSize, trackSize, thumbSize, allMeasured, thumbLeft, minimumTrackWidth} = this.state;
     var mainStyles = styles || defaultStyles;
-    var thumbLeft = value.interpolate({
-      inputRange: [minimumValue, maximumValue],
-      outputRange: [0, containerSize.width - thumbSize.width],
-      //extrapolate: 'clamp',
-    });
     var valueVisibleStyle = {};
     if (!allMeasured) {
       valueVisibleStyle.opacity = 0;
@@ -244,7 +262,7 @@ export default class Slider extends PureComponent {
 
     var minimumTrackStyle = {
       position: 'absolute',
-      width: Animated.add(thumbLeft, thumbSize.width / 2),
+      width: minimumTrackWidth,
       backgroundColor: minimumTrackTintColor,
       ...valueVisibleStyle
     };
@@ -369,7 +387,7 @@ export default class Slider extends PureComponent {
         trackSize: this._trackSize,
         thumbSize: this._thumbSize,
         allMeasured: true,
-      })
+      }, this.updateAnimatedStyles)
     }
   };
 
